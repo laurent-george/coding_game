@@ -12,6 +12,8 @@ import sys
 
 
 TYPE_REAPER = 0
+TYPE_TANKER = 3
+TYPE_DESTROYER = 1
 TYPE_WRECK = 4
 
 
@@ -60,7 +62,7 @@ class Vehicle(object):
 
 
 
-class Ripper(Vehicle):
+class Reaper(Vehicle):
     """
     Class for our own vehicles
     """
@@ -71,10 +73,18 @@ class Ripper(Vehicle):
 class Destroyer(Vehicle):
     def __init__(self, *args, **kwargs):
         super().__init__(kwargs)
-        self.friction = 0.2
+        self.friction = 0.3
 
-    def move_to(self, dest_x, dest_y, radius=0):
-        
+class Tanker(Vehicle):
+    def __init__(self, *args, **kwargs):
+        self.water = kwargs.pop('water')
+        super().__init__(kwargs)
+        self.friction = 0.4
+
+    def update(self, **kwargs):
+        self.water = kwargs.pop('water')
+        super().update(kwargs)
+
 
 
 
@@ -91,9 +101,13 @@ class Wrecks(object):
 class Game(object):
     def __init__(self):
         self.active_wrecks = {}
-        self.my_rippers = {}
-        self.ennemy_rippers = {}
+        self.my_reapers = {}
+        self.ennemy_reapers = {}
 
+        self.my_destroyers = {}
+        self.ennemy_destroyers = {}
+
+        self.tankers = {}
         self.active_ids = []
 
     def update_state(self, unit_count=None):
@@ -101,6 +115,7 @@ class Game(object):
 
         # we recreate wrecks each time
         self.active_wrecks = {}
+        self.tankers = {}
 
         for i in range(unit_count):
             unit_id, unit_type, player, mass, radius, x, y, vx, vy, extra, extra_2 = input().split()
@@ -118,13 +133,18 @@ class Game(object):
 
             self.active_ids.append(unit_id)
 
-            if unit_type == TYPE_REAPER:
-                print_debug("Updating ripper {}".format(unit_id))
-                dict_obj = self.my_rippers if player == 0 else self.ennemy_rippers
+            if unit_type in [TYPE_REAPER, TYPE_DESTROYER, TYPE_TANKER]:
+                print_debug("Updating vehicle {}".format(unit_id))
+                if unit_type == TYPE_REAPER:
+                    dict_obj = self.my_reapers if player == 0 else self.ennemy_reapers
+                if unit_type == TYPE_DESTROYER:
+                    dict_obj = self.my_destroyers if player == 0 else self.ennemy_destroyers
+                if unit_type == TYPE_TANKER:
+                    dict_obj = self.tankers
 
                 obj = dict_obj.get(unit_id)
                 if obj is None:
-                    obj = Ripper()
+                    obj = Reaper()
                     dict_obj[unit_id] = obj
 
                 obj.update(id=unit_id, radius=radius, pos_x=x, pos_y=y, vx=vx, vy=vy, mass=mass)
@@ -133,20 +153,59 @@ class Game(object):
                 obj = Wrecks(id=unit_id, radius=radius, pos_x=x, pos_y=y)
                 self.active_wrecks[unit_id] = obj
 
+
+
     def compute_cmd(self):
-        for unit_id, ripper in self.my_rippers.items():
+
+
+        # reaper
+        for unit_id, reaper in self.my_reapers.items():
             print_debug("Getting move for {}".format(unit_id))
-            wreck = self.find_best_destination(ripper)
+            wreck = self.find_best_destination_for_reaper(reaper)
             if wreck:
-                x, y, throttle = ripper.move_to(wreck.pos_x, wreck.pos_y, radius=wreck.radius)
+                x, y, throttle = reaper.move_to(wreck.pos_x, wreck.pos_y, radius=wreck.radius)
             else:
-                x, y, throttle = ripper.move_to(0, 0, radius=3000)
+                x, y, throttle = reaper.move_to(0, 0, radius=3000)
             print("{} {} {}".format(x, y, throttle))
-        print("Wait")
+
+
+        # destroyer motion
+        for unit_id, destroyer in self.my_destroyers.items():
+            wreck = self.find_best_destination_for_destroyer(destroyer)
+            if wreck:
+                x, y, throttle = destroyer.move_to(wreck.pos_x, wreck.pos_y, radius=wreck.radius)
+            else:
+                x, y, throttle = destroyer.move_to(destroyer.pos_x, destroyer.pos_y, radius=0)
+            print("{} {} {}".format(x, y, throttle))
+
         print("Wait")
 
-    def find_best_destination(self, ripper_obj):
-        return self.closest_wreck(ripper_obj)
+    def find_best_destination_for_destroyer(self, vehicle):
+        return self.find_closest_tanker(vehicle)
+
+    def find_best_destination_for_reaper(self, vehicle):
+        return self.closest_wreck(vehicle)
+
+    def find_closest_tanker(self, vehicle):
+        """
+
+        :param vehicle:
+        :return:
+        """
+        pos_x = vehicle.pos_x
+        pos_y = vehicle.pos_y
+
+        min_distance = None
+        closest = None
+        for obj_id, obj in self.tankers.items():
+            cur_dist = distance_euclid(pos_x, pos_y, obj.pos_x, obj.pos_y)
+            if min_distance is None or cur_dist < min_distance:
+                min_distance = cur_dist
+                closest = obj
+
+        return closest
+
+
 
     def closest_wreck(self, moving_object):
         """
