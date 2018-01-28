@@ -77,13 +77,11 @@ class Destroyer(Vehicle):
 
 class Tanker(Vehicle):
     def __init__(self, *args, **kwargs):
-        self.water = kwargs.pop('water')
         super().__init__(kwargs)
         self.friction = 0.4
 
-    def update(self, **kwargs):
-        self.water = kwargs.pop('water')
-        super().update(kwargs)
+    #def update(self, **kwargs):
+    #    super().update(kwargs)
 
 
 
@@ -137,16 +135,16 @@ class Game(object):
                 print_debug("Updating vehicle {}".format(unit_id))
                 if unit_type == TYPE_REAPER:
                     dict_obj = self.my_reapers if player == 0 else self.ennemy_reapers
+                    obj = Reaper()
                 if unit_type == TYPE_DESTROYER:
                     dict_obj = self.my_destroyers if player == 0 else self.ennemy_destroyers
+                    obj = Destroyer()
                 if unit_type == TYPE_TANKER:
                     dict_obj = self.tankers
+                    obj.water = extra
+                    obj = Tanker()
 
-                obj = dict_obj.get(unit_id)
-                if obj is None:
-                    obj = Reaper()
-                    dict_obj[unit_id] = obj
-
+                dict_obj[unit_id] = obj
                 obj.update(id=unit_id, radius=radius, pos_x=x, pos_y=y, vx=vx, vy=vy, mass=mass)
 
             if unit_type == TYPE_WRECK:
@@ -198,10 +196,13 @@ class Game(object):
         min_distance = None
         closest = None
         for obj_id, obj in self.tankers.items():
-            cur_dist = distance_euclid(pos_x, pos_y, obj.pos_x, obj.pos_y)
-            if min_distance is None or cur_dist < min_distance:
-                min_distance = cur_dist
-                closest = obj
+            try:
+                cur_dist = distance_euclid(pos_x, pos_y, obj.pos_x, obj.pos_y)
+                if min_distance is None or cur_dist < min_distance:
+                    min_distance = cur_dist
+                    closest = obj
+            except Exception as e:
+                print_debug("Failed to get tanker {}".format(obj_id))
 
         return closest
 
