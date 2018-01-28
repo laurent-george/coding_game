@@ -6,6 +6,9 @@ def norm(x, y):
     return np.sqrt(x * x + y * y)
 
 
+def print_debug(*args):
+    print(args,file=sys.stderr)
+
 def compute_distance(u, v):
     return norm(abs(u[0] - v[0]), abs(u[1] - v[1]))
 
@@ -34,27 +37,23 @@ class Vehicle:
         self.goal_radius = radius
 
     def command(self):
-        if (compute_distance([self.goal_pos[0], self.goal_pos[1]], [self.x, self.y]) < 3*self.radius
-        and norm(self.vx, self.vy)) >300:
+        print_debug(" goal {} {} \n pos {} {} \n speed {} {} ".format(
+            self.goal_pos[0],self.goal_pos[1],self.x,self.y, self.vx, self.vy))
+        if compute_distance([self.goal_pos[0], self.goal_pos[1]], [self.x, self.y]) < self.radius:
             x_cmd = self.x - self.vx
             y_cmd = self.y - self.vy
-            power = min(300,norm(self.vx, self.vy)/2)
-            
-        elif compute_distance([self.goal_pos[0], self.goal_pos[1]], [self.x, self.y]) < self.radius:
-            x_cmd = self.x - self.vx
-            y_cmd = self.y - self.vy
-            power = min(300,norm(self.vx, self.vy))
-            
+            power = min(300, norm(self.vx, self.vy))
+            print_debug(" breaking with power {}".format(power))
+
         else:
             v_cmd = [self.goal_pos[0] - self.x - self.vx * (1 - self.friction),
-                    self.goal_pos[1] - self.y - self.vy * (1 - self.friction)]
+                     self.goal_pos[1] - self.y - self.vy * (1 - self.friction)]
 
             x_cmd = self.x + v_cmd[0]
             y_cmd = self.y + v_cmd[1]
             power = 300
 
         return str(round(x_cmd)) + " " + str(round(y_cmd)) + " " + "300"
-
 
     def get_pos(self):
         return [self.x, self.y]
@@ -65,7 +64,15 @@ class Reaper(Vehicle):
         super().__init__()
 
 
-class
+class Doof(Vehicle):
+    def __init__(self):
+        super().__init__()
+
+
+class Destroyer(Vehicle):
+    def __init__(self):
+        super().__init__()
+        
 
 
 def parse_input(my_reaper):
@@ -106,12 +113,13 @@ def parse_input(my_reaper):
 def get_closest_wreck(my_reaper, all_units):
     my_pos = my_reaper.get_pos()
     distance = -1
-    closest_wreck = {"x": 0, "y": 0, "radius": 0}
+    closest_wreck = {"x": 0, "y": 0, "radius": 3000}
     for wreck in all_units[4]:
         wreck_pos = [wreck["x"], wreck["y"]]
         tmp_dis = compute_distance(my_pos, wreck_pos)
         if distance == -1 or tmp_dis < distance:
             closest_wreck = wreck
+            distance = tmp_dis
     return closest_wreck
 
 
